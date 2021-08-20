@@ -1,0 +1,4 @@
+pip3 install xmlsig
+pip3 install pyOpenSSL
+pip3 install xades
+pip3 install suds-jurko

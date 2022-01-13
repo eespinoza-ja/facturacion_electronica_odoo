@@ -116,7 +116,7 @@ class DocumentXML(object):
 
 class SriService(object):
     __AMBIENTE_PRUEBA = '1'
-    __AMBIENTE_PROD = '2'
+    __AMBIENTE_PROD = '1'
     __ACTIVE_ENV = False
     # revisar el utils
     __WS_TEST_RECEIV = 'https://celcer.sri.gob.ec/comprobantes-electronicos-ws/RecepcionComprobantesOffline?wsdl'  # noqa

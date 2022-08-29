@@ -49,7 +49,7 @@ class Xades(object):
     def sign(self, to_sign_file, password):
         JAR_PATH = 'firma/IngeintXades.jar'
         JAVA_CMD = 'java'
-        pk_12_file = 'sign.p12'
+        pk_12_file = 'firma/sign.p12'
         jar_path = os.path.join(os.path.dirname(__file__), JAR_PATH)
 
         command = [

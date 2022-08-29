@@ -98,11 +98,11 @@ class DocumentXML(object):
         messages = []
         client = Client(SriService.get_active_ws()[1])
         result = client.service.autorizacionComprobante(access_key)
-        # self.logger.debug("Respuesta de autorizacionComprobante:SRI")
-        # self.logger.debug(result)
+        #self.logger.error("Respuesta de autorizacionComprobante: SRI")
+        #self.logger.error(result)
         autorizacion = result.autorizaciones[0][0]
         mensajes = autorizacion.mensajes and autorizacion.mensajes[0] or []
-        # self.logger.info('Estado de autorizacion %s' % autorizacion.estado)
+        #self.logger.error('Estado de autorizacion %s' % autorizacion.estado)
         for m in mensajes:
             self.logger.error('{0} {1} {2}'.format(
                 m.identificador, m.mensaje, m.tipo, m.informacionAdicional)

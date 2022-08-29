@@ -23,7 +23,7 @@ from ..xades.xades import Xades
 import os.path
 from os import path
 
-sign = '/home/sebas/Documentos/ESTEBAN SEBASTIAN ESPINOZA ABRIL 110121091102.p12'
+sign = '/opt/odoo/odoo-custom-addons/l10n_ec_ein/xades/firma/sign.p12'
 
 
 class Invoice(models.Model):
@@ -41,8 +41,6 @@ class Invoice(models.Model):
     sri_payment_type = fields.Many2one('sri.payment_type', copy=False)
 
     def _info_invoice(self):
-        """
-        """
         company = self.company_id
         partner = self.partner_id
         infoFactura = {
@@ -57,23 +55,42 @@ class Invoice(models.Model):
             'totalDescuento': '0.00',
             'propina': '0.00',
             'importeTotal': '{:.2f}'.format(self.amount_total),
-            'moneda': 'USD',
+            'moneda': 'DOLAR',
             'formaPago': self.sri_payment_type.code,
             'valorRetIva': '0.00',
-            'valorRetRenta': '0.00',
-            'contribuyenteEspecial': company.is_special_taxpayer
+            'valorRetRenta': '0.00'
         }
+        if(str(company.is_special_taxpayer) != '000'):
+            infoFactura = {'contribuyenteEspecial': company.is_special_taxpayer}
 
         totalConImpuestos = []
+        baseImponibleConIva = 0.0
+        valorConIva = 0.0
+        baseImponibleSinIva = 0.0
+        valorSinIva = 0.0
         for lines in self.invoice_line_ids:
-            totalImpuesto = {
-                'codigo': lines.tax_ids.sri_code.code,
-                'codigoPorcentaje': lines.tax_ids.sri_rate.code,
-                'baseImponible': '{:.2f}'.format(lines.price_subtotal),
-                'tarifa': lines.tax_ids.amount,
-                'valor': '{:.2f}'.format(lines.price_subtotal * (lines.tax_ids.amount / 100))
-            }
-            totalConImpuestos.append(totalImpuesto)
+            if(str(lines.tax_ids.sri_code.code) == '2' and str(lines.tax_ids.sri_rate.code) == '2'):
+                baseImponibleConIva += float(f'{lines.price_subtotal:.2f}')
+                valorConIva += float(f'{(lines.price_subtotal * (lines.tax_ids.amount / 100)):.2f}')
+
+            if(str(lines.tax_ids.sri_code.code) == '2' and str(lines.tax_ids.sri_rate.code) == '0'):
+                baseImponibleSinIva += float(f'{lines.price_subtotal:.2f}')
+                valorSinIva += float(f'{(lines.price_subtotal * (lines.tax_ids.amount / 100)):.2f}')
+
+        totalConImpuestos.append({
+            'codigo': '2',
+            'codigoPorcentaje': '2',
+            'baseImponible': '{:.2f}'.format(baseImponibleConIva),
+            'tarifa': '12.0',
+            'valor': '{:.2f}'.format(valorConIva)
+        })
+        totalConImpuestos.append({
+            'codigo': '2',
+            'codigoPorcentaje': '0',
+            'baseImponible': '{:.2f}'.format(baseImponibleSinIva),
+            'tarifa': '0.0',
+            'valor': '{:.2f}'.format(valorSinIva)
+        })
 
         infoFactura.update({'totalConImpuestos': totalConImpuestos})
 
@@ -110,6 +127,8 @@ class Invoice(models.Model):
         }
 
         detalles = []
+        impuestos = []
+        indice_impuestos = 0
         for line in invoice.invoice_line_ids:
             codigoPrincipal = line.product_id and \
                               line.product_id.default_code and \
@@ -126,7 +145,7 @@ class Invoice(models.Model):
                 'precioTotalSinImpuesto': '%.2f' % line.price_subtotal,
                 'detalle_adicional': detalle_adicional
             }
-            impuestos = []
+            
             for tax_line in line:
                 percent = int(tax_line.tax_ids.amount)
                 impuesto = {
@@ -137,8 +156,9 @@ class Invoice(models.Model):
                     'valor': '{:.2f}'.format(tax_line.price_subtotal * (tax_line.tax_ids.amount / 100))
                 }
                 impuestos.append(impuesto)
-        detalle.update({'impuestos': impuestos})
-        detalles.append(detalle)
+            detalle.update({'impuestos': [impuestos[indice_impuestos]]})
+            detalles.append(detalle)
+            indice_impuestos = indice_impuestos + 1
         return {'detalles': detalles}
 
     def render_authorized_einvoice(self, autorizacion):
@@ -168,7 +188,7 @@ class Invoice(models.Model):
             xades = self.env['sri.key.type'].search([
                 ('company_id', '=', self.company_id.id)
             ])
-            x_path = "/opt/odoo14/ComprobantesGenerados/"
+            x_path = "/opt/odoo/ComprobantesGenerados/"
             if not path.exists(x_path):
                 os.mkdir(x_path)
             to_sign_file = open(x_path+'FACTURA_SRI_'+self.name+".xml", 'w')
@@ -193,7 +213,6 @@ class Invoice(models.Model):
         ])
 
         for data in to_process:
-
             xml = DocumentXML()
             auth, m = xml.request_authorization(data.sri_authorization_code)
             if not auth:
@@ -258,7 +277,6 @@ class Invoice(models.Model):
         data.update(self._info_tributaria(invoice, access_key, emission_code))
         data.update(self._info_invoice())
         detalles = self._detalles(invoice)
-
         data.update(detalles)
         data.update(self._compute_discount(detalles))
         einvoice = einvoice_tmpl.render(data)
